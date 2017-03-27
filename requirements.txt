@@ -1,0 +1,6 @@
+python-daemon == 2.1.1
+socketIO-client == 0.7.0
+pyyaml == 3.12
+pycrypto == 2.6.1
+oauth2client == 3.0.0
+google-api-python-client == 1.5.2

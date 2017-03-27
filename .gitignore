@@ -224,3 +224,5 @@ Session.vim
 .netrwhist
 # auto-generated tag files
 tags
+
+config/config.yaml
