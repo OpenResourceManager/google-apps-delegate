@@ -1,0 +1,179 @@
+#! /usr/bin/env python
+
+from __future__ import print_function
+from socketIO_client import SocketIO, LoggingNamespace
+from includes.GAppsManager import GAppsManager
+from includes.helpers import read_config, read_encrypted_message, write_json_error, write_json_log
+import socket
+
+IO = None
+HOST_NAME = None
+BC_KEY = None
+DELEGATE_HOST = 'localhost'
+DELEGATE_PORT = 3000
+GOOGLE_CONFIG = None
+
+
+class GAppsDelegate:
+    def __init__(self):
+        True
+
+    @staticmethod
+    def load_config():
+        global HOST_NAME, DELEGATE_HOST, DELEGATE_PORT, BC_KEY, GOOGLE_CONFIG
+        c = read_config()
+        GOOGLE_CONFIG = c['google']
+        config = c['general']
+        HOST_NAME = socket.gethostname()
+        DELEGATE_HOST = config['delegate_server_host']
+        DELEGATE_PORT = config['delegate_server_port']
+
+        try:
+            if not config['bc_key']:
+                write_json_error({
+                    'action': 'load_config',
+                    'message': 'You have not provided a `bc_key` in your config file! Hint: `php artisan orm:bckey`',
+                    'log-type': 'fatal'
+                })
+                raise Exception('You have not provided a `bc_key` in your config file! Hint: `php artisan orm:bckey`')
+        except KeyError:
+            write_json_error({
+                'action': 'load_config',
+                'message': 'You have not provided a `bc_key` in your config file! Hint: `php artisan orm:bckey`',
+                'log-type': 'fatal'
+            })
+            raise KeyError('You have not provided a `bc_key` in your config file! Hint: `php artisan orm:bckey`')
+        BC_KEY = config['bc_key']
+
+    @staticmethod
+    def connect_to_sio():
+        global IO
+        write_json_log({
+            'action': 'connect_to_sio',
+            'DELEGATE_HOST': DELEGATE_HOST,
+            'DELEGATE_PORT': DELEGATE_PORT,
+            'message': 'Connecting to Event Delegate Server...',
+            'log-type': 'information'
+        })
+        IO = SocketIO(DELEGATE_HOST, DELEGATE_PORT, LoggingNamespace)
+        write_json_log({
+            'action': 'connect_to_sio_success',
+            'DELEGATE_HOST': DELEGATE_HOST,
+            'DELEGATE_PORT': DELEGATE_PORT,
+            'message': 'Connected to Event Delegate Server!',
+            'log-type': 'information'
+        })
+
+    @staticmethod
+    def on_create_account(*args):
+        for arg in args:
+            message = read_encrypted_message(arg, BC_KEY)
+            conf = message['conf']['google']
+            account = message['data']
+            if conf['enabled']:
+                conf['key_file_path'] = GOOGLE_CONFIG['key_file_path']
+                write_json_log({
+                    "conf": conf,
+                    "account": account
+                })
+                #gapps = GAppsManager(conf)
+                #gapps.new_account(account)
+
+    @staticmethod
+    def on_update_account(*args):
+        for arg in args:
+            message = read_encrypted_message(arg, BC_KEY)
+            conf = message['conf']['google']
+            account = message['data']
+            if conf['enabled']:
+                conf['key_file_path'] = GOOGLE_CONFIG['key_file_path']
+                write_json_log({
+                    "conf": conf,
+                    "account": account
+                })
+                #gapps = GAppsManager(conf)
+                #gapps.update_account(account)
+
+    @staticmethod
+    def on_delete_account(*args):
+        for arg in args:
+            message = read_encrypted_message(arg, BC_KEY)
+            conf = message['conf']['google']
+            account = message['data']
+            if conf['enabled']:
+                conf['key_file_path'] = GOOGLE_CONFIG['key_file_path']
+                write_json_log({
+                    "conf": conf,
+                    "account": account
+                })
+                #gapps = GAppsManager(conf)
+                #gapps.delete_account(account)
+
+    @staticmethod
+    def on_restore_account(*args):
+        for arg in args:
+            message = read_encrypted_message(arg, BC_KEY)
+            conf = message['conf']['google']
+            account = message['data']
+            if conf['enabled']:
+                conf['key_file_path'] = GOOGLE_CONFIG['key_file_path']
+                write_json_log({
+                    "conf": conf,
+                    "account": account
+                })
+                #gapps = GAppsManager(conf)
+                #gapps.restore_account(account)
+
+    def run(self):
+        write_json_log({
+            'action': 'run',
+            'message': 'Starting...',
+            'log-type': 'information'
+        })
+        # Load the configuration
+        write_json_log({
+            'action': 'run',
+            'message': 'Loading configuration...',
+            'log-type': 'information'
+        })
+        self.load_config()
+        # Connect to the server
+        write_json_log({
+            'action': 'run',
+            'message': 'Connecting to SIO...',
+            'log-type': 'information'
+        })
+
+        write_json_log({
+            'action': 'gapps',
+            'message': 'Authenticating with Google...',
+            'log-type': 'information'
+        })
+
+        self.connect_to_sio()
+        write_json_log({
+            'action': 'run',
+            'message': 'Initializing IO handlers...',
+            'log-type': 'information'
+        })
+
+        # Emmit that we're here
+        IO.emit('join', {'hostname': HOST_NAME + ' -- google-apps-delegate'})
+        # Account Listeners
+        IO.on('create_account', self.on_create_account)
+        IO.on('update_account', self.on_update_account)
+        IO.on('delete_account', self.on_delete_account)
+        IO.on('restore_account', self.on_restore_account)
+
+        write_json_log({
+            'action': 'run',
+            'message': 'Startup complete! Waiting for events...',
+            'log-type': 'information'
+        })
+        # Hang out
+        IO.wait()
+
+
+if __name__ == "__main__":
+    delegate = GAppsDelegate()
+    delegate.run()

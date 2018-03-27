@@ -1,9 +1,6 @@
 general:
-  log_path: /var/log/GoogleAppsDelegate
-event_server:
-  host: localhost
-  port: 3000
+  delegate_server_host: localhost
+  delegate_server_port: 3000
   bc_key: false # You must run: `php artisan orm:bckey` on the ORM Core API server to generate a BC_KEY, after that paste the key string here
 google:
-  super_admin_email: im_the_admin@domain.tld
-  key_file_path: key.json
+  key_file_path: config/key.json
